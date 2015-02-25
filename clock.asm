@@ -15,7 +15,7 @@
 ;    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <P16F877.inc>
+#include <p16f877a.inc>
 
 #DEFINE BANK0 BCF STATUS,RP0    
 #DEFINE BANK1 BSF STATUS,RP0
@@ -94,6 +94,9 @@ cmonthm	equ		0x67
 cmonthl	equ		0x68
 cyearm	equ		0x69
 cyearl	equ		0x6A
+cbst	equ		0x6B
+		
+tmpLEDdata equ	0x6C
 
 lcdct	equ		0x70			; lcd digit number
 lcddat	equ		0x74			; bcd values for lcd - goes up to 0x7C
@@ -186,6 +189,7 @@ main
 		CLRF	cmonthl
 		CLRF	cyearm
 		CLRF	cyearl
+		CLRF	cbst
 
 		CLRF	tmp1
 		CLRF	umode
@@ -258,8 +262,9 @@ endsubsecupdate
 
 		BTFSC	adcmode,0
 		GOTO	decode			; Call decode if ADC mode is 1; happens every other time (every 10ms)
+								; (and return from ISR after we are done) 
 
-		CALL	startadc		; Start the ADC conversion (should call this only every other time too??)
+		CALL	startadc		; Otherwise, start the ADC conversion
 
 		CALL 	buttonproc
 
@@ -333,6 +338,8 @@ decode
 		MOVWF	cyearm
 		MOVFW	yearl
 		MOVWF	cyearl
+		MOVFW	bst
+		MOVWF	cbst
 
 		MOVF	cminm,1
 		BTFSS	STATUS,Z
@@ -358,7 +365,7 @@ mm
 		GOTO	decodemin
 ;		RETFIE					; tmp retfie. uncomment the goto and delete the retfie for normal usage	
 
-		INCF	sigclk,F			; increment timer
+		INCF	sigclk,F		; increment timer
 		BTFSS	signal,0		
 		GOTO	mmoff			; if signal has turned off, go to mmoff
 		RETFIE
@@ -450,7 +457,7 @@ decodebits
 		BTFSC	mode,3			; we're not decoding bits - we've finished
 		GOTO	process
 
-		INCF	sigclk
+		INCF	sigclk,F
 		MOVLW	.17				; at 170ms check bit A
 		SUBWF	sigclk,W
 		BTFSC	STATUS,Z
@@ -472,235 +479,235 @@ process
 		MOVFW	cursec
 		MOVWF	tmpsec
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec01
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec02
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec03
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec04
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec05
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec06
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec07
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec08
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec09
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec10
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec11
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec12
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec13
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec14
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec15
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec16
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec17
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec18
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec19
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec20
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec21
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec22
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec23
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec24
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec25
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec26
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec27
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec28
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec29
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec30
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec31
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec32
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec33
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec34
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec35
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec36
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec37
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec38
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec39
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec40
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec41
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec42
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec43
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec44
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec45
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec46
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec47
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec48
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec49
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec50
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec51
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec52
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec53
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec54
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec55
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec56
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec57
 
-		DECF	tmpsec
+		DECF	tmpsec,F
 		BTFSC	STATUS,Z
 		CALL	procsec58
 
@@ -734,73 +741,73 @@ getbitb
 procsec01
 		CLRF	dut
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec02
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec03
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec04
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec05
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec06
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec07
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec08
 		BTFSC	bitb,0
-		INCF	dut
+		INCF	dut,F
 		RETURN
 procsec09
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 procsec10
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 		RETURN
 procsec11
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 		RETURN
 procsec12
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 		RETURN
 procsec13
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 		RETURN
 procsec14
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 		RETURN
 procsec15
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 		RETURN
 procsec16
 		BTFSC	bitb,0
-		DECF	dut
+		DECF	dut,F
 		RETURN
 		RETURN
 procsec17
@@ -996,7 +1003,7 @@ sigoff
 
 
 incrsec
-		INCF	secl
+		INCF	secl,F
 		MOVLW	.10
 		SUBWF	secl,W
 		BTFSS	STATUS,Z
@@ -1009,7 +1016,7 @@ incrsec
 
 
 incrsec2
-		INCF	secm
+		INCF	secm,F
 		MOVLW	.7
 		SUBWF	secm,W
 		BTFSS	STATUS,Z
@@ -1451,7 +1458,7 @@ buttonproc
 		MOVLW	.3				; beep for 15ms
 		CALL	beep
 
-		INCF	datefmt			; increment datefmt
+		INCF	datefmt,F		; increment datefmt
 		MOVLW	.4				; and wrap to zero if necessary
 		SUBWF	datefmt,W
 		BTFSC	STATUS,Z
@@ -1684,34 +1691,6 @@ turnalmoff
 
 
 
-; -----------------------------------------------------------------------------------
-; DEBUGGING FUNCTION ONLY (should be commented out)
-display
-		MOVFW	dispdig
-		ADDWF	dispdig,W
-		ADDLW	lcddat
-		MOVWF	disptmp
-		INCF	disptmp,W		
-		MOVWF	FSR				; put lcddat+2*dispdig+1 into FSR
-		
-		MOVFW	dispval
-		MOVWF	disptmp
-		MOVLW	B'00001111'
-		ANDWF	disptmp,F
-		MOVFW	disptmp
-		MOVWF	INDF			; move dispval to disptmp, AND with mask, and move to INDF
-
-		DECF	FSR,F			; move to 16s digit
-
-		MOVFW	dispval
-		MOVWF	disptmp
-		MOVLW	B'11110000'
-		ANDWF	disptmp,F
-		SWAPF	disptmp
-		MOVFW	disptmp
-		MOVWF	INDF			; move dispval to disptmp, AND with mask, swap nibbles, and move to INDF
-		RETURN
-
 
 ; -----------------------------------------------------------------------------------
 ; LED Update. (called LCD?!)
@@ -1730,15 +1709,28 @@ lcdupdate
 		MOVLW	HIGH lcdpattern
 		MOVWF	PCLATH
 		MOVFW	INDF			; moves data needed to W
+		MOVWF	tmpLEDdata		; and thence to tmpLEDdata
+		MOVLW	.12
+		SUBWF	lcdct,W
+		BTFSS	STATUS,Z		; skip BCD->7seg translation if lcdct==12
+		GOTO	translateBCDtoSevenSeg
+		
+		MOVFW	tmpLEDdata		; move tmpLEDdata back into W
+		GOTO	lcdDataToDisplay ; and display the raw bits
+translateBCDtoSevenSeg
+		MOVFW	tmpLEDdata
 		CALL	lcdpattern		; convert this data from BCD to 7-seg format
+lcdDataToDisplay
 		MOVWF	PORTB			; ...and send to display.
 
+		;; output appropriate pin of PORTC
 		MOVLW	HIGH lcdselectdigc
 		MOVWF	PCLATH
 		MOVFW	lcdct			; get current digit
 		CALL	lcdselectdigc	; convert to PORTC pattern
 		MOVWF	PORTC			; send out to PORTC
-		
+
+		;; output appropriate pin of PORTD
 		MOVLW	HIGH lcdselectdigd
 		MOVWF	PCLATH
 		MOVFW	lcdct			; get current digit
@@ -1756,12 +1748,11 @@ lcdupdate
 restofloop
 
 		INCF	lcdct,F			; increment lcd count
-		MOVLW	.12				
-		SUBWF	lcdct,W			; compute count - 12
-		BTFSS	STATUS,Z		; if result is zero, skip
-		RETURN
-		CLRF	lcdct			; reset counter to zero
-		RETURN
+		MOVLW	.13				
+		SUBWF	lcdct,W			; compute count - 13
+		BTFSC	STATUS,Z		; if result is non-zero, skip counter reset
+		CLRF	lcdct			; else reset counter to zero
+		RETURN					; and return
 
 
 
@@ -1827,8 +1818,8 @@ lcdpattern
 
 ; -----------------------------------------------------------------------------------
 ; LED select line for PORTC. (called LCD?!)
-; 	When called with a binary number in W from 0 to 11, corresponding to one of the 
-;		digits on the display that should be illuminated, 
+; 	When called with a binary number in W from 0 to 12, corresponding to one of the 
+;		digits on the display that should be illuminated, or (for 12) the day/BST LEDs 
 ;	returns the corresponding pattern for PORTC to illuminate that digit (nb some
 ;   digit enable transistors are connected to PORTD, so PORTC will be all zeros for these
 lcdselectdigc
@@ -1845,11 +1836,12 @@ lcdselectdigc
 		RETLW	B'00010000'
 		RETLW	B'00000000'
 		RETLW	B'00000000'
+		RETLW	B'00000000'		; 13th 'digit' drives BST/day LEDs
 
 ; -----------------------------------------------------------------------------------
 ; LED select line for PORTD. (called LCD?!)
-; 	When called with a binary number in W from 0 to 11, corresponding to one of the 
-;		digits on the display that should be illuminated, 
+; 	When called with a binary number in W from 0 to 12, corresponding to one of the 
+;		digits on the display that should be illuminated, or (for 12) the day/BST LEDs 
 ;	returns the corresponding pattern for PORTD to illuminate that digit (nb most
 ;   digit enable transistors are connected to PORTC, so PORTD will be all zeros for these
 lcdselectdigd
@@ -1866,6 +1858,7 @@ lcdselectdigd
 		RETLW	B'00000000'
 		RETLW	B'00001000'
 		RETLW	B'00000100'
+		RETLW	B'00010000'		; 13th 'digit' drives BST/day LEDs
 
 		END
 
@@ -1895,7 +1888,7 @@ lcdselectdigd
 ;		47-50	copy A to minute 1s digit
 ;		58		B is BST indicator
 
-;	 
+;	Correspondence between PORTB pins and display segments
 ;	B7	Middle bar
 ;	B6	Bottom bar
 ;	B5	Top left
@@ -1905,7 +1898,7 @@ lcdselectdigd
 ;	B1	Bottom right
 ;	B0	Top bar
 ;
-;
+;	Correspondence between PORTC/PORTD drivers and 7-segment digits
 ;	D0	Bottom 2	
 ;	D1	Bottom 1
 ;	D2	Bottom 6
@@ -1921,87 +1914,3 @@ lcdselectdigd
 
 
 
-
-;;		DEBUGGING to diplay time of signal on/off
-;		BTFSC	tmp1,0
-;		GOTO	turnon
-;
-;		BTFSC	signal,0		; if the signal is on, move to stillon
-;		GOTO	stillon
-;
-;		MOVFW	sigclk
-;		MOVWF	dispval
-;		MOVLW	.3
-;		MOVWF	dispdig
-
-;		CALL	display
-;
-;		BSF		tmp1,0
-;		GOTO	stillon
-;
-;turnon
-;		BTFSC	tmp1,1
-;		GOTO	turnoff
-;
-;		BTFSS	signal,0		; if the signal is off, move to stillon
-;		GOTO	stillon
-;
-;		MOVFW	sigclk
-;		MOVWF	dispval
-;		MOVLW	.4
-;		MOVWF	dispdig
-;		CALL	display
-;
-;		BSF		tmp1,1
-;		GOTO	stillon
-;
-;turnoff
-;		BTFSC	tmp1,2
-;		GOTO	stillon
-;
-;		BTFSC	signal,0		; if the signal is on, move to stillon
-;		GOTO	stillon
-;
-;		MOVFW	sigclk
-;		MOVWF	dispval
-;		MOVLW	.5
-;		MOVWF	dispdig
-;		CALL	display
-;
-;		BSF		tmp1,2
-;		GOTO	stillon
-;
-;
-;stillon
-;
-;;		END OF DEBUGGING
-
-
-
-
-;		MOVFW	cursec			; debugging
-;		MOVWF	lcddat+.11
-;		MOVLW	B'00001111'
-;		ANDWF	lcddat+.11,F
-
-;		MOVFW	cursec
-;		MOVWF	lcddat+.10
-;		MOVLW	B'11110000'
-;		ANDWF	lcddat+.10,F
-;		SWAPF	lcddat+.10
-
-;		MOVFW	sigclk
-;		MOVWF	lcddat+.9
-;		MOVLW	B'00001111'
-;		ANDWF	lcddat+.9,F
-
-;		MOVFW	sigclk
-;		MOVWF	lcddat+.8
-;		MOVLW	B'11110000'
-;		ANDWF	lcddat+.8,F
-;		SWAPF	lcddat+.8
-
-;		MOVFW	mode
-;		MOVWF	lcddat+.6
-;		MOVLW	B'00001111'
-;		ANDWF	lcddat+.6,F
