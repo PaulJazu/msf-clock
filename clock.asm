@@ -1,5 +1,5 @@
 ;    MSF Radio Clock
-;    Copyright (C) 2004 Chris Johnson (http://www.chris-j.co.uk)
+;    Copyright (C) 2004-2015 Chris Johnson (http://www.chris-j.co.uk)
 
 ;    This program is free software: you can redistribute it and/or modify
 ;    it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 ;    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <p16f877a.inc>
+#include <p16f877.inc>
 
 #DEFINE BANK0 BCF STATUS,RP0    
 #DEFINE BANK1 BSF STATUS,RP0
@@ -94,10 +94,12 @@ cmonthm	equ		0x67
 cmonthl	equ		0x68
 cyearm	equ		0x69
 cyearl	equ		0x6A
-cbst	equ		0x6B
+cdayow	equ		0x6B
+cbst	equ		0x6C
+				
+tmpLEDdata equ	0x6D
+tmp     equ	    0x6E
 		
-tmpLEDdata equ	0x6C
-
 lcdct	equ		0x70			; lcd digit number
 lcddat	equ		0x74			; bcd values for lcd - goes up to 0x7C
 
@@ -209,7 +211,7 @@ main
 		MOVWF	aledtim
 
 		BSF		INTCON,T0IE		; enable timer interrupt
-		MOVLW	.130			; initialise timer to 130
+		MOVLW	.132			; initialise timer to 132 (was 130, but found this was slightly faster than 1khz...
 		MOVWF	TMR0			; (255-130)*8.00us = 1.00ms
 		BSF		INTCON,GIE		; enable global interrupts
 
@@ -222,7 +224,7 @@ loop
 ; Called every 1ms by TMR0 interrupt
 intr
 	;	MOVLW	.224		; set timer to 224
-		MOVLW	.130		; set timer to 130
+		MOVLW	.132		; set timer to 132 (from 130)
 		MOVWF	TMR0
 		BCF		INTCON,T0IF		; clear timer interrupt flag
 
@@ -340,7 +342,7 @@ decode
 		MOVWF	cyearl
 		MOVFW	bst
 		MOVWF	cbst
-
+		
 		MOVF	cminm,1
 		BTFSS	STATUS,Z
 		GOTO 	skiplongpip
@@ -1248,10 +1250,29 @@ disprightdt
 		SUBWF	datefmt,W
 		BTFSC	STATUS,Z		; dispdate if datefmt=3
 		CALL	disptd4			; display (HHMM/SSTH) format
+
+		CALL	disp_DayOfWeek_BST		; display Day of week and BST LEDs
 		RETURN
 
 
+disp_DayOfWeek_BST
+		MOVLW	0x01 			; put 00000001 in the LED bits
+		MOVWF lcddat+.12
 
+		MOVLW	cdayow			; move day of week (0 = sunday, 6=sat) to tmp
+		MOVWF	tmp
+		INCF	tmp,F
+disp_DayOfWeek_BST_loop_start			; shift lcddat+12 left by the correct number of days
+		DECFSZ 	tmp,F
+		GOTO 	disp_DayOfWeek_BST_loop_code
+		GOTO 	disp_DayOfWeek_BST_loop_done
+disp_DayOfWeek_BST_loop_code
+		RLF		lcddat+.12,F
+		GOTO 	disp_DayOfWeek_BST_loop_start
+disp_DayOfWeek_BST_loop_done
+
+		
+		RETURN
 
 ; -----------------------------------------------------------------------------------
 ; Display seconds

@@ -1,6 +1,6 @@
 SOURCE=clock.asm
 HEXFILE=clock.hex
-DEVICE=16f877a
+DEVICE=16f877
 
 ASM=gpasm
 FLAGS=-p$(DEVICE) -o$(HEXFILE)
