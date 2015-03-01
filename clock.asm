@@ -101,7 +101,7 @@ tmpLEDdata equ	0x6D
 tmp     equ	    0x6E
 		
 lcdct	equ		0x70			; lcd digit number
-lcddat	equ		0x74			; bcd values for lcd - goes up to 0x7C
+lcddat	equ		0x71			; bcd values for lcd - goes up to 0x7D
 
 		ORG		0x00			; Reset point
 		GOTO	main
@@ -136,18 +136,22 @@ main
 		CLRF	PORTB
 		CLRF	PORTA
 		MOVLW	B'00010001'		; set initial display to horizontal bars
-		MOVWF	0x74
-		MOVWF	0x75
-		MOVWF	0x76
-		MOVWF	0x77
-		MOVWF	0x78
-		MOVWF	0x79
-		MOVWF	0x7A
-		MOVWF	0x7B
-		MOVWF	0x7C
-		MOVWF	0x7D
-		MOVWF	0x7E
-		MOVWF	0x7F
+		MOVWF	lcddat+.0
+		MOVWF	lcddat+.1
+		MOVWF	lcddat+.2
+		MOVWF	lcddat+.3
+		MOVWF	lcddat+.4
+		MOVWF	lcddat+.5
+		MOVWF	lcddat+.6
+		MOVWF	lcddat+.7
+		MOVWF	lcddat+.8
+		MOVWF	lcddat+.9
+		MOVWF	lcddat+.10
+		MOVWF	lcddat+.11
+		MOVLW	0xFF			; all LEDs on
+		MOVWF	lcddat+.12
+		
+		
 		CLRF	adcmode
 		CLRF	sigclk
 		CLRF	mode
@@ -192,6 +196,7 @@ main
 		CLRF	cyearm
 		CLRF	cyearl
 		CLRF	cbst
+		CLRF	cdayow
 
 		CLRF	tmp1
 		CLRF	umode
@@ -342,6 +347,8 @@ decode
 		MOVWF	cyearl
 		MOVFW	bst
 		MOVWF	cbst
+		MOVFW	dayow
+		MOVWF	cdayow
 		
 		MOVF	cminm,1
 		BTFSS	STATUS,Z
@@ -980,7 +987,12 @@ startadc
 
 ; -----------------------------------------------------------------------------------
 ; Try ADC read
-;	Sets 'signal' to all ones if the ADC has read >32 (1/4 of full voltage?), or all zeros if not 
+;	Sets 'signal' to all ones if the ADC has read >32 (~1/4 of full voltage), or all zeros if not
+;
+;   ADC required because of the unusual connection to the radio module: the radio is open collector
+;	and has a 1kohm pullup to 5V, but the open collector of the radio is also in parallel a 5V LED
+;	which is on dimly when the radio is not pulling its output to ground.
+;	My module pulls output to ground when the carrier is turned off (i.e. when bits are 1)
 ;	Clears the ADC mode flag
 tryadcread
 		BTFSC	ADCON0,NOT_DONE	; skip return if NOT_DONE false, i.e. continue if conversion is finished
@@ -1251,15 +1263,10 @@ disprightdt
 		BTFSC	STATUS,Z		; dispdate if datefmt=3
 		CALL	disptd4			; display (HHMM/SSTH) format
 
-		CALL	disp_DayOfWeek_BST		; display Day of week and BST LEDs
-		RETURN
-
-
-disp_DayOfWeek_BST
 		MOVLW	0x01 			; put 00000001 in the LED bits
-		MOVWF lcddat+.12
+		MOVWF 	lcddat+.12
 
-		MOVLW	cdayow			; move day of week (0 = sunday, 6=sat) to tmp
+		MOVFW	cdayow			; move day of week (0 = sunday, 6=sat) to tmp
 		MOVWF	tmp
 		INCF	tmp,F
 disp_DayOfWeek_BST_loop_start			; shift lcddat+12 left by the correct number of days
@@ -1271,8 +1278,11 @@ disp_DayOfWeek_BST_loop_code
 		GOTO 	disp_DayOfWeek_BST_loop_start
 disp_DayOfWeek_BST_loop_done
 
+		BTFSC	cbst,0			
+		BSF		lcddat+.12,7
 		
 		RETURN
+
 
 ; -----------------------------------------------------------------------------------
 ; Display seconds
@@ -1727,8 +1737,6 @@ lcdupdate
 		ADDWF	lcdct,W			; add counter to get current LED to be updated
 		MOVWF	FSR				; move address of data needed to FSR
 		
-		MOVLW	HIGH lcdpattern
-		MOVWF	PCLATH
 		MOVFW	INDF			; moves data needed to W
 		MOVWF	tmpLEDdata		; and thence to tmpLEDdata
 		MOVLW	.12
@@ -1739,6 +1747,8 @@ lcdupdate
 		MOVFW	tmpLEDdata		; move tmpLEDdata back into W
 		GOTO	lcdDataToDisplay ; and display the raw bits
 translateBCDtoSevenSeg
+		MOVLW	HIGH lcdpattern
+		MOVWF	PCLATH
 		MOVFW	tmpLEDdata
 		CALL	lcdpattern		; convert this data from BCD to 7-seg format
 lcdDataToDisplay
