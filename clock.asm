@@ -15,12 +15,92 @@
 ;    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <p16f877.inc>
+		
 
+;		states: (the value of 'mode')
+;
+;		1 - waiting for long pulse to signify minute start
+;		2 - holding on long pulse (-> 3 or -> 1)
+;		3 - waiting for new second marker
+;		4 - sampling bits
+;		5 - decoding (->3 or ->1)
+
+;	    (incomplete) table of MSF signal bits, for each second of the minute.
+;		0	    minute marker
+;		1-8		increment dut1 on B
+;		9-16	decrement dut1 on B
+;		17-20	copy A to year 10s digit
+;		21-24	copy A to year 1s digit
+;		25		copy A to month 10s digit
+;		26-29	copy A to month 1s digit
+;		30-31	copy A to days 10s digit
+;		32-35	copy A to days 1s digit
+;		36-38	copy A to day-of-week
+;		39-40	copy A to hour 10s digit
+;		41-44	copy A to hour 1s digit
+;		45-46	copy A to minute 10s digit
+;		47-50	copy A to minute 1s digit
+;		58		B is BST indicator
+
+;	Correspondence between PORTB pins and display segments (active high)
+;	B7	Middle bar
+;	B6	Bottom bar
+;	B5	Top left
+;	B4	Top right
+;	B3	decimal point
+;	B2	Bottom left
+;	B1	Bottom right
+;	B0	Top bar
+;
+;	Correspondence between PORTC/PORTD drivers and 7-segment digits (active high)
+;	Display arranged as  Top     1 2  3 4  5 6
+;                        Bottom  1 2  3 4  5 6 
+;	D0	Bottom 2	
+;	D1	Bottom 1
+;	D2	Bottom 6
+;	D3	Bottom 5
+;	C0	Top 4
+;	C1	Top 3
+;	C2	Top 2
+;	C3	Top 1
+;	C4	Bottom 4
+;	C5	Bottom 3
+;	C6	Top 6
+;	C7	Top 5
+;	D4	Day of week and BST LEDs
+;       (RB0 through RB6 correspond to Sunday through Saturday, BST indicator = RB7
+
+		
+IFDEF __16F877
+#include <p16f877.inc>
+ENDIF
+IFDEF __16F877A
+#include <p16f877a.inc>
+ENDIF
+IFDEF __16F887
+#include <p16f887.inc>
+#define CHIP_TYPE_16F88x	
+ENDIF
+IFDEF __16F874
+#include <p16f874.inc>
+ENDIF
+IFDEF __16F874A
+#include <p16f874a.inc>
+ENDIF
+IFDEF __16F884
+#include <p16f884.inc>
+#define CHIP_TYPE_16F88x
+ENDIF
+
+		
 #DEFINE BANK0 BCF STATUS,RP0    
 #DEFINE BANK1 BSF STATUS,RP0
 
+IFDEF CHIP_TYPE_16F88x
+		__CONFIG _CP_OFF & _WDT_OFF & _PWRTE_ON & _XT_OSC & _LVP_OFF & _IESO_OFF & _FCMEN_OFF
+ELSE
 		__CONFIG _CP_OFF & _WDT_OFF & _PWRTE_ON & _XT_OSC & _LVP_OFF
+ENDIF
 
 adcmode equ		0x20			; whether to read or initialise the ADC
 count	equ		0x21			; divide-by-5 counter
@@ -101,8 +181,11 @@ tmpLEDdata equ	0x6D
 tmp     equ	    0x6E
 		
 lcdct	equ		0x70			; lcd digit number
-lcddat	equ		0x71			; bcd values for lcd - goes up to 0x7D
+lcddat	equ		0x71			; bcd values for display and day of week/BST LEDs
+								; start of array of 13 bytes that goes up to 0x7D 
 
+
+		
 		ORG		0x00			; Reset point
 		GOTO	main
 		ORG		0x04			; Interrupt point
@@ -111,24 +194,48 @@ lcddat	equ		0x71			; bcd values for lcd - goes up to 0x7D
 
 ;		Initialise timer and interrupt, then
 ;		sit in an infinite loop waiting for interrupt
-main	
+main
+; Bank 1 stuff
 		BANK1
 		CLRF	TRISB			; set B to outputs
 		CLRF	TRISD			; set D to outputs
 		CLRF	TRISC			; set C to outputs
 		MOVLW	B'00100001'
 		MOVWF	TRISA			; set A0 and A5 to input
-		BCF		TRISE,PSPMODE	; turn off parallel-slave mode on D 
+		
+IFNDEF CHIP_TYPE_16F88x			; no PSP peripheral on 16f88x
+		BCF		TRISE,PSPMODE	; turn off parallel-slave mode on D
+ENDIF
+		
 		BSF		TRISE,0			; set E to inputs
 		BSF		TRISE,1
 		BSF		TRISE,2
+
+
+IFNDEF CHIP_TYPE_16F88x				; Can leave ADCON1 at defaults for 16F88x
 		MOVLW	B'00001110'
 		MOVWF	ADCON1
+ENDIF
 
 		MOVLW	B'10000010'		; timer divide by 8
 		MOVWF	OPTION_REG		; gives 4.000Mhz/(4*8) = 125.00kHz
-								
-		BANK0
+
+IFDEF CHIP_TYPE_16F88x
+; Bank 2 stuff
+		BCF 	STATUS,RP0
+		BSF		STATUS,RP1
+		CLRF	CM1CON0			; turn off comparators
+		CLRF	CM2CON0
+; Bank 3 stuff
+		BSF 	STATUS,RP0
+		BSF		STATUS,RP1
+		MOVLW	B'00000001'
+		MOVWF	ANSEL		; Set RA5 (one of the buttons) to digital not analog input
+ENDIF
+
+; Bank 0 stuff
+		BCF		STATUS,RP0
+		BCF		STATUS,RP1
 		MOVLW	B'00000001'
 		MOVWF	ADCON0			; set ADC to Fosc/2, AN0, ADC global on
 
@@ -1747,25 +1854,25 @@ lcdupdate
 		MOVFW	tmpLEDdata		; move tmpLEDdata back into W
 		GOTO	lcdDataToDisplay ; and display the raw bits
 translateBCDtoSevenSeg
-		MOVLW	HIGH lcdpattern
+		MOVLW	HIGH led_pattern
 		MOVWF	PCLATH
 		MOVFW	tmpLEDdata
-		CALL	lcdpattern		; convert this data from BCD to 7-seg format
+		CALL	led_pattern		; convert this data from BCD to 7-seg format
 lcdDataToDisplay
 		MOVWF	PORTB			; ...and send to display.
 
 		;; output appropriate pin of PORTC
-		MOVLW	HIGH lcdselectdigc
+		MOVLW	HIGH led_select_digit_c
 		MOVWF	PCLATH
 		MOVFW	lcdct			; get current digit
-		CALL	lcdselectdigc	; convert to PORTC pattern
+		CALL	led_select_digit_c	; convert to PORTC pattern
 		MOVWF	PORTC			; send out to PORTC
 
 		;; output appropriate pin of PORTD
-		MOVLW	HIGH lcdselectdigd
+		MOVLW	HIGH led_select_digit_d
 		MOVWF	PCLATH
 		MOVFW	lcdct			; get current digit
-		CALL	lcdselectdigd	; convert to PORTD pattern
+		CALL	led_select_digit_d	; convert to PORTD pattern
 		MOVWF	PORTD			; send out to PORTD
 		
 		CLRF	PCLATH			; load PCLATH with data
@@ -1792,10 +1899,10 @@ restofloop
 								; to ensure no page-wrapping occurs (0x0800 = 2048 lines)
 
 ; -----------------------------------------------------------------------------------
-; LED pattern. (called LCD?!)
+; LED pattern
 ; 	When called with a binary number in W, 
 ;	returns the corresponding 7-segment display pattern in W, to send to PORTB
-lcdpattern
+led_pattern
 		ADDWF	PCL,F
 		RETLW	B'01110111'		; 0 
 		RETLW	B'00010010'		; 1 
@@ -1848,12 +1955,12 @@ lcdpattern
 		RETLW	B'00001000'		; digit off with dot
 
 ; -----------------------------------------------------------------------------------
-; LED select line for PORTC. (called LCD?!)
+; LED select line for PORTC.
 ; 	When called with a binary number in W from 0 to 12, corresponding to one of the 
 ;		digits on the display that should be illuminated, or (for 12) the day/BST LEDs 
 ;	returns the corresponding pattern for PORTC to illuminate that digit (nb some
 ;   digit enable transistors are connected to PORTD, so PORTC will be all zeros for these
-lcdselectdigc
+led_select_digit_c
 		ADDWF	PCL,F
 		RETLW	B'00001000'
 		RETLW	B'00000100'
@@ -1870,12 +1977,12 @@ lcdselectdigc
 		RETLW	B'00000000'		; 13th 'digit' drives BST/day LEDs
 
 ; -----------------------------------------------------------------------------------
-; LED select line for PORTD. (called LCD?!)
+; LED select line for PORTD.
 ; 	When called with a binary number in W from 0 to 12, corresponding to one of the 
 ;		digits on the display that should be illuminated, or (for 12) the day/BST LEDs 
 ;	returns the corresponding pattern for PORTD to illuminate that digit (nb most
 ;   digit enable transistors are connected to PORTC, so PORTD will be all zeros for these
-lcdselectdigd
+led_select_digit_d
 		ADDWF	PCL,F
 		RETLW	B'00000000'
 		RETLW	B'00000000'
@@ -1892,56 +1999,5 @@ lcdselectdigd
 		RETLW	B'00010000'		; 13th 'digit' drives BST/day LEDs
 
 		END
-
-
-
-
-;		states:
-;
-;		1 - waiting for long pulse to signify minute start
-;		2 - holding on long pulse (-> 3 or -> 1)
-;		3 - watiting for new second marker
-;		4 - sampling bits
-;		5 - decoding (->3 or ->1)
-
-;		1-8		increment dut1 on B
-;		9-16	decrement dut1 on B
-;		17-20	copy A to year 10s digit
-;		21-24	copy A to year 1s digit
-;		25		copy A to month 10s digit
-;		26-29	copy A to month 1s digit
-;		30-31	copy A to days 10s digit
-;		32-35	copy A to days 1s digit
-;		36-38	copy A to day-of-week
-;		39-40	copy A to hour 10s digit
-;		41-44	copy A to hour 1s digit
-;		45-46	copy A to minute 10s digit
-;		47-50	copy A to minute 1s digit
-;		58		B is BST indicator
-
-;	Correspondence between PORTB pins and display segments
-;	B7	Middle bar
-;	B6	Bottom bar
-;	B5	Top left
-;	B4	Top right
-;	B3	DP
-;	B2	Bottom left
-;	B1	Bottom right
-;	B0	Top bar
-;
-;	Correspondence between PORTC/PORTD drivers and 7-segment digits
-;	D0	Bottom 2	
-;	D1	Bottom 1
-;	D2	Bottom 6
-;	D3	Bottom 5
-;	C0	Top 4
-;	C1	Top 3
-;	C2	Top 2
-;	C3	Top 1
-;	C4	Bottom 4
-;	C5	Bottom 3
-;	C6	Top 6
-;	C7	Top 5
-
 
 
