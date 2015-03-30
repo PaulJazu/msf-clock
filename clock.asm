@@ -93,6 +93,16 @@ IFDEF __16F884
 ENDIF
 
 		
+; When MSF_SIGNAL_CARRIER_POLARITY is defined, the polarity of the MSF signal at AN0
+; should be the same as that of the MSF carrier wave, namely high for most of each second,
+; and low only for the first 500ms of a minute and the first 100ms-300ms of each subsequent second
+; When MSF_SIGNAL_CARRIER_POLARITY is not defined, the signal at RA0 should be low for
+; most of each second, and high only for 500ms at the start of each minute, and the first
+; 100ms-300ms of each subsequent second. In this mode asserting RA0 to high corresponds to
+; a "1" value for bits A and B.
+#define MSF_SIGNAL_CARRIER_POLARITY 
+
+		
 #DEFINE BANK0 BCF STATUS,RP0    
 #DEFINE BANK1 BSF STATUS,RP0
 
@@ -479,7 +489,6 @@ skiplongpip:
 mm
 		BTFSC	mode,1			; if we've already found the mm, move on
 		GOTO	decodemin
-;		RETFIE					; tmp retfie. uncomment the goto and delete the retfie for normal usage	
 
 		INCF	sigclk,F		; increment timer
 		BTFSS	signal,0		
@@ -550,7 +559,7 @@ bitsstart
 		CALL	disprightse
 
 		
-		MOVF	cminm,0	; if current minute is not 59, return
+		MOVF	cminm,0			; if current minute is not 59, return
 		SUBLW	.5
 		BTFSS	STATUS,Z
 		RETFIE
@@ -559,12 +568,12 @@ bitsstart
 		BTFSS	STATUS,Z
 		RETFIE
 	
-		MOVF	cursec,0	; if current second is not >54, return
+		MOVF	cursec,0		; if current second is not >54, return
 		SUBLW	.54
 		BTFSC	STATUS,C
 		RETFIE
 
-		MOVLW	.10		; short pips beep
+		MOVLW	.10				; short pips beep
 		CALL	beep
 		RETFIE
 
@@ -587,7 +596,7 @@ decodebits
 		MOVLW	.75				; at 750ms everything is definitely off
 		SUBWF	sigclk,W
 		BTFSC	STATUS,Z
-		BSF		mode,3		; now finished getting data
+		BSF		mode,3			; now finished getting data
 		RETFIE
 
 ; CHUNK 5 start
@@ -1099,7 +1108,8 @@ startadc
 ;   ADC required because of the unusual connection to the radio module: the radio is open collector
 ;	and has a 1kohm pullup to 5V, but the open collector of the radio is also in parallel a 5V LED
 ;	which is on dimly when the radio is not pulling its output to ground.
-;	My module pulls output to ground when the carrier is turned off (i.e. when bits are 1)
+;	My module pulls output to ground when the carrier is turned off (i.e. when bits are 1), so
+;   has MSF_SIGNAL_CARRIER_POLARITY defined.
 ;	Clears the ADC mode flag
 tryadcread
 		BTFSC	ADCON0,NOT_DONE	; skip return if NOT_DONE false, i.e. continue if conversion is finished
@@ -1113,11 +1123,22 @@ tryadcread
 		SUBWF	ADRESH,W
 		BTFSC	STATUS,0
 		GOTO	sigoff
+		
+IFDEF MSF_SIGNAL_CARRIER_POLARITY
 		MOVLW	B'11111111'
+ENDIF
+IFNDEF MSF_SIGNAL_CARRIER_POLARITY
+		MOVLW	.0
+ENDIF
 		MOVWF	signal
 		RETURN
 sigoff
+IFDEF MSF_SIGNAL_CARRIER_POLARITY
 		MOVLW	.0
+ENDIF
+IFNDEF MSF_SIGNAL_CARRIER_POLARITY
+		MOVLW	B'11111111'
+ENDIF
 		MOVWF	signal
 		RETURN
 
